@@ -109,3 +109,29 @@ def missing_by_row(df):
             "Proportion of Null Values" 
         ],
     ).sort_values(by='Proportion of Null Values')
+
+
+
+
+def handle_missing_values(df, prop_required_column, prop_required_row):
+    """
+    Drop rows or columns based on the percent of values that are missing.
+
+    Parameters:
+    df (pandas.DataFrame): The input dataframe.
+    prop_required_column (float): The proportion of non-missing values required to keep a column.
+    prop_required_row (float): The proportion of non-missing values required to keep a row.
+
+    Returns:
+    pandas.DataFrame: The dataframe with missing values handled.
+    """
+    temp_df = df
+    # Drop columns with too many missing values
+    threshold = int(round(prop_required_column * len(df.index), 0))
+    temp_df.dropna(axis=1, thresh=threshold, inplace=True)
+
+    # Drop rows with too many missing values
+    threshold = int(round(prop_required_row * len(df.columns), 0))
+    temp_df.dropna(axis=0, thresh=threshold, inplace=True)
+
+    return temp_df
