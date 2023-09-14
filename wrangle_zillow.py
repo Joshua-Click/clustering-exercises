@@ -5,7 +5,7 @@ from env import get_db_url
 import matplotlib.pyplot as plt
 import os
 
-
+from sklearn.model_selection import train_test_split
 
 
 
@@ -112,26 +112,54 @@ def missing_by_row(df):
 
 
 
+#Define function to drop columns/rows based on proportion of nulls
+def null_dropper(df, prop_required_column, prop_required_row):
+    
+    prop_null_column = 1 - prop_required_column
+    
+    for col in list(df.columns):
+        
+        null_sum = df[col].isna().sum()
+        null_pct = null_sum / df.shape[0]
+        
+        if null_pct > prop_null_column:
+            df.drop(columns=col, inplace=True)
+            
+    row_threshold = int(prop_required_row * df.shape[1])
+    
+    df.dropna(axis=0, thresh=row_threshold, inplace=True)
+    
+    return df
 
-def handle_missing_values(df, prop_required_column, prop_required_row):
-    """
-    Drop rows or columns based on the percent of values that are missing.
 
-    Parameters:
-    df (pandas.DataFrame): The input dataframe.
-    prop_required_column (float): The proportion of non-missing values required to keep a column.
-    prop_required_row (float): The proportion of non-missing values required to keep a row.
 
-    Returns:
-    pandas.DataFrame: The dataframe with missing values handled.
-    """
-    temp_df = df
-    # Drop columns with too many missing values
-    threshold = int(round(prop_required_column * len(df.index), 0))
-    temp_df.dropna(axis=1, thresh=threshold, inplace=True)
 
-    # Drop rows with too many missing values
-    threshold = int(round(prop_required_row * len(df.columns), 0))
-    temp_df.dropna(axis=0, thresh=threshold, inplace=True)
 
-    return temp_df
+
+
+
+
+def split_data(df):
+    '''
+    split continuouse data into train, validate, test; No target variable
+
+    argument: df
+
+    return: train, validate, test
+    '''
+
+    train_val, test = train_test_split(df,
+                                   train_size=0.8,
+                                   random_state=1108,
+                                   )
+    train, validate = train_test_split(train_val,
+                                   train_size=0.7,
+                                   random_state=1108,
+                                   )
+    
+    print(f'Train: {len(train)/len(df)}')
+    print(f'Validate: {len(validate)/len(df)}')
+    print(f'Test: {len(test)/len(df)}')
+    
+
+    return train, validate, test
