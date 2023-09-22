@@ -4,7 +4,8 @@ import numpy as np
 from env import get_db_url
 import matplotlib.pyplot as plt
 import os
-
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
 
 def acquire_mall():
     '''
@@ -96,6 +97,28 @@ def report_outliers(df, k=1.5) -> None:
                 df[col] > upper_bound) | (df[col] < lower_bound)])
             print('----------')
 
+
+def split_data(df, target=None) -> tuple:
+    '''
+    split_data will split data into train, validate, and test sets
+    
+    if a discrete target is in the data set, it may be specified
+    with the target kwarg (Default None)
+    
+    return: three pandas DataFrames
+    '''
+    train_val, test = train_test_split(
+        df, 
+        train_size=0.8, 
+        random_state=1108,
+        stratify=target)
+    train, validate = train_test_split(
+        train_val,
+        train_size=0.7,
+        random_state=1108,
+        stratify=target)
+    return train, validate, test
+
 def summarize(df, k=1.5) -> None:
     '''
     Summarize will take in a pandas DataFrame
@@ -133,3 +156,60 @@ def summarize(df, k=1.5) -> None:
     print('Outliers: ')
     print(report_outliers(df, k=k))
     print('======================\n======================')
+
+
+def get_continuous_feats(df) -> list:
+    '''
+    find all continuous numerical features
+    
+    return: list of column names (strings)
+    '''
+    num_cols = []
+    num_df = df.select_dtypes('number')
+    for col in num_df:
+        if num_df[col].nunique() > 20:
+            num_cols.append(col)
+    return num_cols
+
+def prep_mall(df) -> pd.DataFrame:
+    '''
+    prep mall will set the index of the customer id to the 
+    dataframe index, and will  scale continuous data in the df.
+    
+    return: a single, cleaned dataset.
+    '''
+    # set the index to customer_id
+    df = df.set_index('customer_id')
+    #no missing info in this one,
+    #only a couple outliers with no indication to drop them
+    train, validate, test = split_data(df)
+    num_cols = get_continuous_feats(df)
+    # preprocessing:
+    #make a scaler:
+    scaler = MinMaxScaler()
+    scaled_cols = [col + '_scaled' for col in num_cols]
+    train[scaled_cols] = scaler.fit_transform(train[num_cols])
+    validate[scaled_cols] = scaler.transform(validate[num_cols])
+    test[scaled_cols] = scaler.transform(test[num_cols])
+    train, validate, test = [
+        subset.assign(
+            is_male=np.where(subset.gender == 'Male', True, False)
+        ) for subset in [
+            train, validate, test
+        ]
+    ]
+    return train, validate, test
+
+def wrangle_mall(summarization=True, k=1.5) -> tuple:
+    '''
+    wrangle_mall will acquire and prepare mall customer data
+    
+    if summarization is set to True, a console report 
+    of data summary will be output to the console.
+    
+    return: train, validate, and test data sets with scaled numeric information
+    '''
+    if summarization:
+        summarize(acquire_mall(), k=k)
+    train, validate, test = prep_mall(acquire_mall())
+    return train, validate, test
